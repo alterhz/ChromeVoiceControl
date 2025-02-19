@@ -10,7 +10,7 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "48": "icon_voice_control.png"
+      "128": "icon_voice_control.png"
     }
   },
   "background": {
@@ -23,6 +23,6 @@
     }
   ],
   "icons": {
-    "48": "icon_voice_control.png"
+    "128": "icon_voice_control.png"
   }
 }
