@@ -27,10 +27,10 @@ function setupSpeechRecognition() {
         if (videos.length > 0) {
           const video = videos[0];
           
-          if (command.includes('播放') || command.includes('开始')) {
+          if (command.includes('播放') || command.includes('开始') || command.includes('start') || command.includes('resume') || command.includes('play')) {
             console.log('Playing video');
             video.play();
-          } else if (command.includes('暂停') || command.includes('停止')) {
+          } else if (command.includes('暂停') || command.includes('停止') || command.includes('pause') || command.includes('stop')) {
             console.log('Pausing video');
             video.pause();
           }
