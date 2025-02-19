@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Voice Control for Videos",
+  "version": "1.0",
+  "description": "Control video playback with voice commands",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon_voice_control.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "48": "icon_voice_control.png"
+  }
+}
