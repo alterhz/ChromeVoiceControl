@@ -122,6 +122,46 @@ function setupSpeechRecognition() {
           const volumeUpPatternEnglish = /volume up|increase volume|louder|turn up/;
           const volumeDownPatternEnglish = /volume down|decrease volume|lower|turn down/;
 
+          // 快进快退命令模式
+          const forwardPatternChinese = /快进(\d+)?(?:秒|分钟)?/;
+          const backwardPatternChinese = /快退(\d+)?(?:秒|分钟)?/;
+          const forwardPatternEnglish = /(?:forward|skip ahead|skip forward|fast forward)(?: (\d+))?(?: seconds?| minutes?)?/;
+          const backwardPatternEnglish = /(?:backward|skip back|rewind|go back)(?: (\d+))?(?: seconds?| minutes?)?/;
+
+          // 中文快进命令
+          const forwardCommandsChinese = [
+            '前进',
+            '向前',
+            '往前',
+            '跳过',
+            '快进'
+          ];
+
+          // 英文快进命令
+          const forwardCommandsEnglish = [
+            'forward',
+            'skip ahead',
+            'skip forward',
+            'fast forward'
+          ];
+
+          // 中文快退命令
+          const backwardCommandsChinese = [
+            '后退',
+            '向后',
+            '往后',
+            '快退',
+            '倒退'
+          ];
+
+          // 英文快退命令
+          const backwardCommandsEnglish = [
+            'backward',
+            'skip back',
+            'rewind',
+            'go back'
+          ];
+
           // 检查命令类型
           const isPlayCommand = 
             playCommandsChinese.some(cmd => command.includes(cmd)) ||
@@ -168,6 +208,40 @@ function setupSpeechRecognition() {
               // 减小音量，每次减少20%
               video.volume = Math.max(video.volume - 0.2, 0);
               console.log('Volume decreased to:', video.volume);
+            } else {
+              // 处理快进快退命令
+              const DEFAULT_SEEK_TIME = 10; // 默认快进快退10秒
+              let seekTime = DEFAULT_SEEK_TIME;
+              
+              // 检查是否包含时间
+              let forwardMatch = command.match(forwardPatternChinese) || command.match(forwardPatternEnglish);
+              let backwardMatch = command.match(backwardPatternChinese) || command.match(backwardPatternEnglish);
+              
+              if (forwardMatch || forwardCommandsChinese.some(cmd => command.includes(cmd)) || 
+                  forwardCommandsEnglish.some(cmd => command.includes(cmd))) {
+                // 如果指定了时间，使用指定的时间
+                if (forwardMatch && forwardMatch[1]) {
+                  seekTime = parseInt(forwardMatch[1]);
+                  // 如果命令中包含"分钟"，将秒数转换为分钟
+                  if (command.includes('分钟') || command.includes('minutes')) {
+                    seekTime *= 60;
+                  }
+                }
+                console.log('Seeking forward by', seekTime, 'seconds');
+                video.currentTime = Math.min(video.currentTime + seekTime, video.duration);
+              } else if (backwardMatch || backwardCommandsChinese.some(cmd => command.includes(cmd)) || 
+                         backwardCommandsEnglish.some(cmd => command.includes(cmd))) {
+                // 如果指定了时间，使用指定的时间
+                if (backwardMatch && backwardMatch[1]) {
+                  seekTime = parseInt(backwardMatch[1]);
+                  // 如果命令中包含"分钟"，将秒数转换为分钟
+                  if (command.includes('分钟') || command.includes('minutes')) {
+                    seekTime *= 60;
+                  }
+                }
+                console.log('Seeking backward by', seekTime, 'seconds');
+                video.currentTime = Math.max(video.currentTime - seekTime, 0);
+              }
             }
           }
         }
