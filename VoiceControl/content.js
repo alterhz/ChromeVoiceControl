@@ -8,7 +8,53 @@
 
 let recognition = null;
 let isListening = false;
+let subtitleTimeout = null;
 console.log('Content script loaded');
+
+// 创建字幕元素
+function createSubtitleElement() {
+  const subtitle = document.createElement('div');
+  subtitle.id = 'voice-subtitle';
+  subtitle.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 5em;
+    z-index: 999999;
+    display: none;
+    text-align: center;
+    max-width: 80%;
+    word-wrap: break-word;
+  `;
+  document.body.appendChild(subtitle);
+  return subtitle;
+}
+
+// 显示字幕
+function showSubtitle(text) {
+  let subtitle = document.getElementById('voice-subtitle');
+  if (!subtitle) {
+    subtitle = createSubtitleElement();
+  }
+  
+  subtitle.textContent = text;
+  subtitle.style.display = 'block';
+  
+  // 清除之前的定时器
+  if (subtitleTimeout) {
+    clearTimeout(subtitleTimeout);
+  }
+  
+  // 2.5秒后隐藏字幕
+  subtitleTimeout = setTimeout(() => {
+    subtitle.style.display = 'none';
+  }, 2500);
+}
 
 function setupSpeechRecognition() {
   console.log('Setting up speech recognition');
@@ -26,6 +72,9 @@ function setupSpeechRecognition() {
       const result = event.results[i];
       const command = result[0].transcript.trim().toLowerCase();
       console.log('Recognized command:', command, 'isFinal:', result.isFinal);
+      
+      // 显示语音字幕
+      showSubtitle(result[0].transcript.trim());
       
       // 只处理最终结果
       if (result.isFinal) {
