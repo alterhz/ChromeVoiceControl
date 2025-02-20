@@ -27,11 +27,72 @@ function setupSpeechRecognition() {
         if (videos.length > 0) {
           const video = videos[0];
           
-          if (command.includes('播放') || command.includes('开始') || command.includes('start') || command.includes('resume') || command.includes('play')) {
-            console.log('Playing video');
+          // 中文播放命令
+          const playCommandsChinese = [
+            '播放',
+            '开始播放',
+            '播放视频',
+            '开始',
+            '开启视频',
+            '继续播放',
+            '打开视频',
+            '运行视频',
+            '启动视频',
+            '接着放'
+          ];
+
+          // 英文播放命令
+          const playCommandsEnglish = [
+            'play',
+            'start',
+            'play video',
+            'start video',
+            'resume',
+            'begin',
+            'continue',
+            'go ahead',
+            'run video'
+          ];
+
+          // 中文暂停命令
+          const pauseCommandsChinese = [
+            '暂停',
+            '停止',
+            '暂停视频',
+            '停止播放',
+            '关闭视频',
+            '停下',
+            '别放了',
+            '停一下'
+          ];
+
+          // 英文暂停命令
+          const pauseCommandsEnglish = [
+            'pause',
+            'stop',
+            'pause video',
+            'stop video',
+            'halt',
+            'hold',
+            'stop playing',
+            'freeze'
+          ];
+
+          // 检查是否包含任何播放命令
+          const isPlayCommand = 
+            playCommandsChinese.some(cmd => command.includes(cmd)) ||
+            playCommandsEnglish.some(cmd => command.includes(cmd));
+
+          // 检查是否包含任何暂停命令
+          const isPauseCommand =
+            pauseCommandsChinese.some(cmd => command.includes(cmd)) ||
+            pauseCommandsEnglish.some(cmd => command.includes(cmd));
+
+          if (isPlayCommand) {
+            console.log('Playing video with command:', command);
             video.play();
-          } else if (command.includes('暂停') || command.includes('停止') || command.includes('pause') || command.includes('stop')) {
-            console.log('Pausing video');
+          } else if (isPauseCommand) {
+            console.log('Pausing video with command:', command);
             video.pause();
           }
         }
