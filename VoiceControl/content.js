@@ -173,8 +173,8 @@ function setupSpeechRecognition() {
 
           // 音量调节命令模式
           const volumePatternChinese = /音量调到(\d+)/;
-          const volumeUpPatternChinese = /增大音量|调高音量|音量增大|音量调高|声音调大|声音增大/;
-          const volumeDownPatternChinese = /减小音量|调低音量|音量减小|音量调低|声音调小|声音减小/;
+          const volumeUpPatternChinese = /增大音量|调高音量|音量增大|音量调高|声音调大|声音增大|声音大点/;
+          const volumeDownPatternChinese = /减小音量|调低音量|音量减小|音量调低|声音调小|声音减小|声音小点/;
           const volumePatternEnglish = /volume (?:to |set to |change to )?(\d+)/;
           const volumeUpPatternEnglish = /volume up|increase volume|louder|turn up/;
           const volumeDownPatternEnglish = /volume down|decrease volume|lower|turn down/;
