@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Voice Control for Videos",
+  "name": "声控侠 VoiceMate",
   "version": "1.0",
-  "description": "Control video playback with voice commands",
+  "description": "视频语音控制助手 - Voice Control Assistant for Videos | 用语音命令轻松控制视频播放，支持中英双语 | Control video playback with voice commands in both Chinese and English",
   "author": "Ziegler <550360139@qq.com>",
   "permissions": [
     "activeTab",
