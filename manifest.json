@@ -3,6 +3,7 @@
   "name": "Voice Control for Videos",
   "version": "1.0",
   "description": "Control video playback with voice commands",
+  "author": "Ziegler <550360139@qq.com>",
   "permissions": [
     "activeTab",
     "scripting"

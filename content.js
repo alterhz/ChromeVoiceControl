@@ -1,3 +1,11 @@
+/**
+ * Chrome Voice Control - A Chrome extension for controlling video playback with voice commands
+ * 
+ * @author Ziegler <550360139@qq.com>
+ * @license MIT
+ * @copyright (c) 2025 Ziegler
+ */
+
 let recognition = null;
 let isListening = false;
 console.log('Content script loaded');
