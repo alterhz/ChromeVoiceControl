@@ -113,13 +113,18 @@ function stopListening() {
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Received message:', request.type, request.isEnabled);
+  console.log('Content script received message:', request.type);
   if (request.type === 'voiceStateChanged') {
     if (request.isEnabled) {
       startListening();
     } else {
       stopListening();
     }
+  } else if (request.type === 'getVoiceState') {
+    // 返回当前实际的语音识别状态
+    console.log('Returning current voice state:', isListening);
+    sendResponse({isEnabled: isListening});
+    return true;
   }
 });
 
