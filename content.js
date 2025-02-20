@@ -78,22 +78,97 @@ function setupSpeechRecognition() {
             'freeze'
           ];
 
-          // 检查是否包含任何播放命令
+          // 中文静音命令
+          const muteCommandsChinese = [
+            '静音',
+            '关闭声音',
+            '关掉声音',
+            '声音关掉',
+            '不要声音',
+            '闭嘴'
+          ];
+
+          // 英文静音命令
+          const muteCommandsEnglish = [
+            'mute',
+            'silence',
+            'no sound',
+            'turn off sound',
+            'shut up'
+          ];
+
+          // 中文取消静音命令
+          const unmuteCommandsChinese = [
+            '取消静音',
+            '打开声音',
+            '开启声音',
+            '声音打开',
+            '要声音'
+          ];
+
+          // 英文取消静音命令
+          const unmuteCommandsEnglish = [
+            'unmute',
+            'turn on sound',
+            'enable sound',
+            'sound on'
+          ];
+
+          // 音量调节命令模式
+          const volumePatternChinese = /音量调到(\d+)/;
+          const volumeUpPatternChinese = /增大音量|调高音量|音量增大|音量调高|声音调大|声音增大/;
+          const volumeDownPatternChinese = /减小音量|调低音量|音量减小|音量调低|声音调小|声音减小/;
+          const volumePatternEnglish = /volume (?:to |set to |change to )?(\d+)/;
+          const volumeUpPatternEnglish = /volume up|increase volume|louder|turn up/;
+          const volumeDownPatternEnglish = /volume down|decrease volume|lower|turn down/;
+
+          // 检查命令类型
           const isPlayCommand = 
             playCommandsChinese.some(cmd => command.includes(cmd)) ||
             playCommandsEnglish.some(cmd => command.includes(cmd));
 
-          // 检查是否包含任何暂停命令
           const isPauseCommand =
             pauseCommandsChinese.some(cmd => command.includes(cmd)) ||
             pauseCommandsEnglish.some(cmd => command.includes(cmd));
 
+          const isMuteCommand =
+            muteCommandsChinese.some(cmd => command.includes(cmd)) ||
+            muteCommandsEnglish.some(cmd => command.includes(cmd));
+
+          const isUnmuteCommand =
+            unmuteCommandsChinese.some(cmd => command.includes(cmd)) ||
+            unmuteCommandsEnglish.some(cmd => command.includes(cmd));
+
+          // 处理命令
           if (isPlayCommand) {
             console.log('Playing video with command:', command);
             video.play();
           } else if (isPauseCommand) {
             console.log('Pausing video with command:', command);
             video.pause();
+          } else if (isMuteCommand) {
+            console.log('Muting video');
+            video.muted = true;
+          } else if (isUnmuteCommand) {
+            console.log('Unmuting video');
+            video.muted = false;
+          } else {
+            // 处理音量调节命令
+            let volumeMatch = command.match(volumePatternChinese) || command.match(volumePatternEnglish);
+            if (volumeMatch) {
+              // 将音量值转换为0-1范围
+              const volumeLevel = Math.min(Math.max(parseInt(volumeMatch[1]) / 100, 0), 1);
+              console.log('Setting volume to:', volumeLevel);
+              video.volume = volumeLevel;
+            } else if (volumeUpPatternChinese.test(command) || volumeUpPatternEnglish.test(command)) {
+              // 增大音量，每次增加20%
+              video.volume = Math.min(video.volume + 0.2, 1);
+              console.log('Volume increased to:', video.volume);
+            } else if (volumeDownPatternChinese.test(command) || volumeDownPatternEnglish.test(command)) {
+              // 减小音量，每次减少20%
+              video.volume = Math.max(video.volume - 0.2, 0);
+              console.log('Volume decreased to:', video.volume);
+            }
           }
         }
       }
