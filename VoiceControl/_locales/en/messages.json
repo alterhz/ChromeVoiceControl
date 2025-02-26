@@ -4,7 +4,7 @@
     "description": "Extension name"
   },
   "extDescription": {
-    "message": "Control video by voice, easily control video playback with voice commands in both Chinese and English. For example, use 'play', 'pause' to control video playback.",
+    "message": "Control video by voice, easily control video playback with voice commands in both Chinese and English.",
     "description": "Extension description"
   }
 }
