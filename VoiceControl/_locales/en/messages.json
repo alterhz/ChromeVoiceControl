@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "VoiceMate",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "VoiceMate, easily control video playback with voice commands in both Chinese and English. For example, use 'play', 'pause' to control video playback.",
+    "description": "Extension description"
+  }
+}

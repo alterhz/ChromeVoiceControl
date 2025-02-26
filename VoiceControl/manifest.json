@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "声控侠VoiceMate",
+  "name": "__MSG_extName__",
   "version": "1.1",
-  "description": "声控侠VoiceMate，用语音命令轻松控制视频播放，支持中英双语。例如：“播放”、“暂停”控制视频播放和暂停。",
+  "description": "__MSG_extDescription__",
+  "default_locale": "zh",
   "author": "Ziegler <550360139@qq.com>",
   "permissions": [
     "activeTab",
