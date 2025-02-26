@@ -1,10 +1,10 @@
 {
   "extName": {
-    "message": "声控侠VoiceMate",
+    "message": "通过语音控制视频",
     "description": "扩展名称"
   },
   "extDescription": {
-    "message": "声控侠VoiceMate，用语音命令轻松控制视频播放，支持中英双语。例如：播放、暂停，控制视频播放和暂停。",
+    "message": "通过语音控制视频，用语音命令轻松控制视频播放，支持中英双语。例如：播放、暂停，控制视频播放和暂停。",
     "description": "扩展描述"
   }
 }
