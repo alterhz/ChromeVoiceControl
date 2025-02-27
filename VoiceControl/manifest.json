@@ -6,7 +6,8 @@
   "description": "__MSG_extDescription__",
   "author": "Ziegler <550360139@qq.com>",
   "permissions": [
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "action": {
     "default_popup": "popup.html",

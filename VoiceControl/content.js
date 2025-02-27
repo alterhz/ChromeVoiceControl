@@ -378,6 +378,23 @@ function stopListening() {
   }
 }
 
+// 保存按钮位置
+function saveButtonPosition(x, y) {
+  const hostname = window.location.hostname;
+  chrome.storage.local.set({
+    [`buttonPosition_${hostname}`]: { x, y }
+  });
+}
+
+// 获取保存的按钮位置
+function getSavedButtonPosition(callback) {
+  const hostname = window.location.hostname;
+  chrome.storage.local.get([`buttonPosition_${hostname}`], (result) => {
+    const position = result[`buttonPosition_${hostname}`];
+    callback(position || { x: 0, y: 0 });
+  });
+}
+
 // 创建麦克风按钮
 function createMicrophoneButton() {
   // 检查是否已存在按钮
@@ -440,6 +457,13 @@ function createMicrophoneButton() {
   let xOffset = 0;
   let yOffset = 0;
 
+  // 恢复保存的位置
+  getSavedButtonPosition((position) => {
+    xOffset = position.x;
+    yOffset = position.y;
+    button.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+  });
+
   button.addEventListener('mousedown', (e) => {
     initialX = e.clientX - xOffset;
     initialY = e.clientY - yOffset;
@@ -462,7 +486,11 @@ function createMicrophoneButton() {
   });
 
   document.addEventListener('mouseup', () => {
-    isDragging = false;
+    if (isDragging) {
+      // 保存最终位置
+      saveButtonPosition(xOffset, yOffset);
+      isDragging = false;
+    }
   });
 
   // 点击切换麦克风状态
