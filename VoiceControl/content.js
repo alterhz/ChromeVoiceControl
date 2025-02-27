@@ -36,7 +36,7 @@ function createSubtitleElement() {
 }
 
 // 显示字幕
-function showSubtitle(text) {
+function showSubtitle(text, isWakeWord = false) {
   let subtitle = document.getElementById('voice-subtitle');
   if (!subtitle) {
     subtitle = createSubtitleElement();
@@ -44,6 +44,13 @@ function showSubtitle(text) {
   
   subtitle.textContent = text;
   subtitle.style.display = 'block';
+  
+  // 如果是唤醒词，使用不同的样式
+  if (isWakeWord) {
+    subtitle.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';  // 绿色背景
+  } else {
+    subtitle.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';  // 黑色背景
+  }
   
   // 清除之前的定时器
   if (subtitleTimeout) {
@@ -56,16 +63,32 @@ function showSubtitle(text) {
   }, 2500);
 }
 
+// 检查是否包含唤醒词
+function containsWakeWord(command) {
+  const wakeWords = ['小助手', '小伙伴', '小精灵'];
+  return wakeWords.some(word => command.includes(word));
+}
+
+// 从命令中移除唤醒词
+function removeWakeWord(command) {
+  const wakeWords = ['小助手', '小伙伴', '小精灵'];
+  let result = command;
+  wakeWords.forEach(word => {
+    result = result.replace(word, '').trim();
+  });
+  return result;
+}
+
 function setupSpeechRecognition() {
   console.log('Setting up speech recognition');
   recognition = new webkitSpeechRecognition();
-  // 修改为非连续模式，这样每次说完话就会立即返回结果
   recognition.continuous = false;
-  // 启用临时结果，可以更快地获得语音识别结果
   recognition.interimResults = true;
   recognition.lang = 'zh-CN';
-  // 设置更短的语音识别时间
   recognition.maxAlternatives = 1;
+
+  let lastWakeWordTime = 0;
+  const wakeWordTimeout = 5000; // 唤醒词有效期5秒
 
   recognition.onresult = function(event) {
     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -73,11 +96,26 @@ function setupSpeechRecognition() {
       const command = result[0].transcript.trim().toLowerCase();
       console.log('Recognized command:', command, 'isFinal:', result.isFinal);
       
-      // 显示语音字幕
-      showSubtitle(result[0].transcript.trim());
-      
-      // 只处理最终结果
       if (result.isFinal) {
+        const currentTime = Date.now();
+        
+        // 检查是否包含唤醒词
+        if (containsWakeWord(command)) {
+          lastWakeWordTime = currentTime;
+          showSubtitle(`已唤醒，请说出指令`, true);
+          continue;
+        }
+
+        // 检查唤醒状态是否有效
+        if (currentTime - lastWakeWordTime > wakeWordTimeout) {
+          showSubtitle(`请先说"小助手"唤醒`);
+          continue;
+        }
+
+        // 处理实际命令
+        const actualCommand = removeWakeWord(command);
+        showSubtitle(actualCommand);
+        
         const videos = document.getElementsByTagName('video');
         console.log('Found videos:', videos.length);
         
@@ -221,27 +259,27 @@ function setupSpeechRecognition() {
 
           // 检查命令类型
           const isPlayCommand = 
-            playCommandsChinese.some(cmd => command.includes(cmd)) ||
-            playCommandsEnglish.some(cmd => command.includes(cmd));
+            playCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+            playCommandsEnglish.some(cmd => actualCommand.includes(cmd));
 
           const isPauseCommand =
-            pauseCommandsChinese.some(cmd => command.includes(cmd)) ||
-            pauseCommandsEnglish.some(cmd => command.includes(cmd));
+            pauseCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+            pauseCommandsEnglish.some(cmd => actualCommand.includes(cmd));
 
           const isMuteCommand =
-            muteCommandsChinese.some(cmd => command.includes(cmd)) ||
-            muteCommandsEnglish.some(cmd => command.includes(cmd));
+            muteCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+            muteCommandsEnglish.some(cmd => actualCommand.includes(cmd));
 
           const isUnmuteCommand =
-            unmuteCommandsChinese.some(cmd => command.includes(cmd)) ||
-            unmuteCommandsEnglish.some(cmd => command.includes(cmd));
+            unmuteCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+            unmuteCommandsEnglish.some(cmd => actualCommand.includes(cmd));
 
           // 处理命令
           if (isPlayCommand) {
-            console.log('Playing video with command:', command);
+            console.log('Playing video with command:', actualCommand);
             video.play();
           } else if (isPauseCommand) {
-            console.log('Pausing video with command:', command);
+            console.log('Pausing video with command:', actualCommand);
             video.pause();
           } else if (isMuteCommand) {
             console.log('Muting video');
@@ -251,17 +289,17 @@ function setupSpeechRecognition() {
             video.muted = false;
           } else {
             // 处理音量调节命令
-            let volumeMatch = command.match(volumePatternChinese) || command.match(volumePatternEnglish);
+            let volumeMatch = actualCommand.match(volumePatternChinese) || actualCommand.match(volumePatternEnglish);
             if (volumeMatch) {
               // 将音量值转换为0-1范围
               const volumeLevel = Math.min(Math.max(parseInt(volumeMatch[1]) / 100, 0), 1);
               console.log('Setting volume to:', volumeLevel);
               video.volume = volumeLevel;
-            } else if (volumeUpPatternChinese.test(command) || volumeUpPatternEnglish.test(command)) {
+            } else if (volumeUpPatternChinese.test(actualCommand) || volumeUpPatternEnglish.test(actualCommand)) {
               // 增大音量，每次增加20%
               video.volume = Math.min(video.volume + 0.2, 1);
               console.log('Volume increased to:', video.volume);
-            } else if (volumeDownPatternChinese.test(command) || volumeDownPatternEnglish.test(command)) {
+            } else if (volumeDownPatternChinese.test(actualCommand) || volumeDownPatternEnglish.test(actualCommand)) {
               // 减小音量，每次减少20%
               video.volume = Math.max(video.volume - 0.2, 0);
               console.log('Volume decreased to:', video.volume);
@@ -271,28 +309,28 @@ function setupSpeechRecognition() {
               let seekTime = DEFAULT_SEEK_TIME;
               
               // 检查是否包含时间
-              let forwardMatch = command.match(forwardPatternChinese) || command.match(forwardPatternEnglish);
-              let backwardMatch = command.match(backwardPatternChinese) || command.match(backwardPatternEnglish);
+              let forwardMatch = actualCommand.match(forwardPatternChinese) || actualCommand.match(forwardPatternEnglish);
+              let backwardMatch = actualCommand.match(backwardPatternChinese) || actualCommand.match(backwardPatternEnglish);
               
-              if (forwardMatch || forwardCommandsChinese.some(cmd => command.includes(cmd)) || 
-                  forwardCommandsEnglish.some(cmd => command.includes(cmd))) {
+              if (forwardMatch || forwardCommandsChinese.some(cmd => actualCommand.includes(cmd)) || 
+                  forwardCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
                 // 如果指定了时间，使用指定的时间
                 if (forwardMatch && forwardMatch[1]) {
                   seekTime = parseInt(forwardMatch[1]);
                   // 如果命令中包含"分钟"，将秒数转换为分钟
-                  if (command.includes('分钟') || command.includes('minutes')) {
+                  if (actualCommand.includes('分钟') || actualCommand.includes('minutes')) {
                     seekTime *= 60;
                   }
                 }
                 console.log('Seeking forward by', seekTime, 'seconds');
                 video.currentTime = Math.min(video.currentTime + seekTime, video.duration);
-              } else if (backwardMatch || backwardCommandsChinese.some(cmd => command.includes(cmd)) || 
-                         backwardCommandsEnglish.some(cmd => command.includes(cmd))) {
+              } else if (backwardMatch || backwardCommandsChinese.some(cmd => actualCommand.includes(cmd)) || 
+                         backwardCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
                 // 如果指定了时间，使用指定的时间
                 if (backwardMatch && backwardMatch[1]) {
                   seekTime = parseInt(backwardMatch[1]);
                   // 如果命令中包含"分钟"，将秒数转换为分钟
-                  if (command.includes('分钟') || command.includes('minutes')) {
+                  if (actualCommand.includes('分钟') || actualCommand.includes('minutes')) {
                     seekTime *= 60;
                   }
                 }
