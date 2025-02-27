@@ -378,6 +378,120 @@ function stopListening() {
   }
 }
 
+// 创建麦克风按钮
+function createMicrophoneButton() {
+  // 检查是否已存在按钮
+  if (document.getElementById('voice-control-button')) {
+    return;
+  }
+
+  const button = document.createElement('div');
+  button.id = 'voice-control-button';
+  
+  // 创建图标容器
+  const iconContainer = document.createElement('div');
+  iconContainer.style.cssText = `
+    width: 48px;
+    height: 48px;
+    background-image: url(${chrome.runtime.getURL('microphone_off.png')});
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin-bottom: 5px;
+  `;
+
+  // 创建文字标签
+  const label = document.createElement('div');
+  label.textContent = '语音控制';
+  label.style.cssText = `
+    font-size: 12px;
+    color: #333;
+    text-align: center;
+    white-space: nowrap;
+    user-select: none;
+  `;
+
+  // 设置按钮容器样式
+  button.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 10000;
+    background: white;
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.2s;
+  `;
+
+  button.appendChild(iconContainer);
+  button.appendChild(label);
+
+  // 添加拖动功能
+  let isDragging = false;
+  let currentX;
+  let currentY;
+  let initialX;
+  let initialY;
+  let xOffset = 0;
+  let yOffset = 0;
+
+  button.addEventListener('mousedown', (e) => {
+    initialX = e.clientX - xOffset;
+    initialY = e.clientY - yOffset;
+    
+    if (e.target === button || button.contains(e.target)) {
+      isDragging = true;
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      currentX = e.clientX - initialX;
+      currentY = e.clientY - initialY;
+      xOffset = currentX;
+      yOffset = currentY;
+
+      button.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // 点击切换麦克风状态
+  button.addEventListener('click', (e) => {
+    if (!isDragging) {  // 只有在不是拖动时才触发点击
+      if (isListening) {
+        stopListening();
+        iconContainer.style.backgroundImage = `url(${chrome.runtime.getURL('microphone_off.png')})`;
+        label.textContent = '语音控制';
+      } else {
+        startListening();
+        iconContainer.style.backgroundImage = `url(${chrome.runtime.getURL('microphone_on.png')})`;
+        label.textContent = '正在听...';
+      }
+    }
+  });
+
+  document.body.appendChild(button);
+  console.log('Microphone button created');
+}
+
+// 立即创建按钮
+createMicrophoneButton();
+
+// 如果DOM还没有加载完成，等待它加载完成后再次尝试创建
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', createMicrophoneButton);
+}
+
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Content script received message:', request.type);
