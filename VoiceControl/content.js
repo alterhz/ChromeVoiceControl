@@ -65,13 +65,13 @@ function showSubtitle(text, isWakeWord = false) {
 
 // 检查是否包含唤醒词
 function containsWakeWord(command) {
-  const wakeWords = ['小助手', '小伙伴', '小精灵'];
+  const wakeWords = ['小助手', '小伙伴', '小精灵', 'hey assistant', 'hey buddy', 'hey helper'];
   return wakeWords.some(word => command.includes(word));
 }
 
 // 从命令中移除唤醒词
 function removeWakeWord(command) {
-  const wakeWords = ['小助手', '小伙伴', '小精灵'];
+  const wakeWords = ['小助手', '小伙伴', '小精灵', 'hey assistant', 'hey buddy', 'hey helper'];
   let result = command;
   wakeWords.forEach(word => {
     result = result.replace(word, '').trim();
