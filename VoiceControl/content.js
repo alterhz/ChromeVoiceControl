@@ -555,12 +555,42 @@ function initializeVoiceControl() {
   // 创建按钮
   createMicrophoneButton();
   
-  // 自动启动语音识别
-  if (!isListening) {
-    startListening();
-    console.log('Voice recognition auto-started');
-  }
+  // 检查是否应该自动启动
+  chrome.storage.local.get(['autoStartVoice'], function(result) {
+    const shouldAutoStart = result.autoStartVoice !== false; // 默认为true
+    if (shouldAutoStart && !isListening) {
+      startListening();
+      console.log('Voice recognition auto-started');
+    } else if (!shouldAutoStart) {
+      // 更新按钮状态为关闭
+      const button = document.getElementById('voice-control-button');
+      if (button) {
+        const iconContainer = button.querySelector('div');
+        const label = button.querySelectorAll('div')[1];
+        iconContainer.style.backgroundImage = `url(${chrome.runtime.getURL('microphone_off.png')})`;
+        label.textContent = '语音控制';
+      }
+    }
+  });
 }
+
+// 处理来自popup的消息
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  console.log('Content script received message:', request.type);
+  
+  if (request.type === 'toggleVoice') {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+    sendResponse({isListening: isListening});
+  } else if (request.type === 'getVoiceState') {
+    sendResponse({isListening: isListening});
+  }
+  
+  return true; // 保持消息通道开放
+});
 
 // 等待页面加载完成后初始化
 if (document.readyState === 'loading') {

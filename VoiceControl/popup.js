@@ -7,26 +7,48 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('Popup initialized');
-  const toggleButton = document.getElementById('voiceToggle');
-  
-  // Get current state
-  chrome.runtime.sendMessage({type: 'getVoiceState'}, function(response) {
-    console.log('Current voice state:', response.isEnabled);
-    updateButtonState(response.isEnabled);
-  });
+  const voiceToggle = document.getElementById('voiceToggle');
+  const autoStartCheckbox = document.getElementById('autoStartVoice');
 
-  toggleButton.addEventListener('click', function() {
-    console.log('Toggle button clicked');
-    chrome.runtime.sendMessage({type: 'toggleVoice'}, function(response) {
-      console.log('Voice state changed to:', response.isEnabled);
-      updateButtonState(response.isEnabled);
+  // 初始化按钮状态
+  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    chrome.tabs.sendMessage(tabs[0].id, {type: 'getVoiceState'}, function(response) {
+      if (response && response.isListening) {
+        voiceToggle.textContent = '禁用语音控制';
+        voiceToggle.classList.remove('off');
+      } else {
+        voiceToggle.textContent = '启用语音控制';
+        voiceToggle.classList.add('off');
+      }
     });
   });
 
-  function updateButtonState(isEnabled) {
-    console.log('Updating button UI state:', isEnabled);
-    toggleButton.textContent = isEnabled ? '关闭语音控制' : '启用语音控制';
-    toggleButton.classList.toggle('off', !isEnabled);
-  }
+  // 加载自动启动设置
+  chrome.storage.local.get(['autoStartVoice'], function(result) {
+    autoStartCheckbox.checked = result.autoStartVoice !== false; // 默认为true
+  });
+
+  // 处理语音控制开关点击
+  voiceToggle.addEventListener('click', function() {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      chrome.tabs.sendMessage(tabs[0].id, {type: 'toggleVoice'}, function(response) {
+        if (response && response.isListening) {
+          voiceToggle.textContent = '禁用语音控制';
+          voiceToggle.classList.remove('off');
+        } else {
+          voiceToggle.textContent = '启用语音控制';
+          voiceToggle.classList.add('off');
+        }
+      });
+    });
+  });
+
+  // 处理自动启动设置变更
+  autoStartCheckbox.addEventListener('change', function() {
+    chrome.storage.local.set({
+      autoStartVoice: autoStartCheckbox.checked
+    }, function() {
+      console.log('Auto-start setting saved:', autoStartCheckbox.checked);
+    });
+  });
 });
