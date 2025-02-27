@@ -448,7 +448,7 @@ function createMicrophoneButton() {
   iconContainer.style.cssText = `
     width: 48px;
     height: 48px;
-    background-image: url(${chrome.runtime.getURL('microphone_off.png')});
+    background-image: url(${chrome.runtime.getURL('microphone_on.png')});
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -457,7 +457,7 @@ function createMicrophoneButton() {
 
   // 创建文字标签
   const label = document.createElement('div');
-  label.textContent = '语音控制';
+  label.textContent = '正在听...';
   label.style.cssText = `
     font-size: 12px;
     color: #333;
@@ -486,6 +486,13 @@ function createMicrophoneButton() {
   button.appendChild(iconContainer);
   button.appendChild(label);
 
+  // 恢复保存的位置
+  getSavedButtonPosition((position) => {
+    xOffset = position.x;
+    yOffset = position.y;
+    button.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+  });
+
   // 添加拖动功能
   let isDragging = false;
   let currentX;
@@ -494,13 +501,6 @@ function createMicrophoneButton() {
   let initialY;
   let xOffset = 0;
   let yOffset = 0;
-
-  // 恢复保存的位置
-  getSavedButtonPosition((position) => {
-    xOffset = position.x;
-    yOffset = position.y;
-    button.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
-  });
 
   button.addEventListener('mousedown', (e) => {
     initialX = e.clientX - xOffset;
@@ -550,12 +550,24 @@ function createMicrophoneButton() {
   console.log('Microphone button created');
 }
 
-// 立即创建按钮
-createMicrophoneButton();
+// 初始化语音控制
+function initializeVoiceControl() {
+  // 创建按钮
+  createMicrophoneButton();
+  
+  // 自动启动语音识别
+  if (!isListening) {
+    startListening();
+    console.log('Voice recognition auto-started');
+  }
+}
 
-// 如果DOM还没有加载完成，等待它加载完成后再次尝试创建
+// 等待页面加载完成后初始化
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', createMicrophoneButton);
+  document.addEventListener('DOMContentLoaded', initializeVoiceControl);
+} else {
+  // 如果页面已经加载完成，直接初始化
+  initializeVoiceControl();
 }
 
 // Listen for messages from background script
