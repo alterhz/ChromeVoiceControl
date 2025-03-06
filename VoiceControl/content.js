@@ -12,6 +12,7 @@ let subtitleTimeout = null;
 let audioContext = null;
 let mediaStream = null;
 let recognizerNode = null;
+let wakeWordReminderShown = false;  // Track if reminder has been shown
 console.log('Content script loaded');
 
 // 创建字幕元素
@@ -127,12 +128,16 @@ async function setupSpeechRecognition() {
       if (containsWakeWord(command)) {
         lastWakeWordTime = currentTime;
         showSubtitle(`已唤醒，请说出指令`, true);
+        wakeWordReminderShown = false;  // Reset reminder flag when wake word is detected
         return;
       }
 
       // 检查唤醒状态是否有效
       if (currentTime - lastWakeWordTime > wakeWordTimeout) {
-        showSubtitle(`请先说"小助手"唤醒`);
+        if (!wakeWordReminderShown) {  // Only show reminder if not shown before
+          showSubtitle(`请先说"小助手"唤醒`);
+          wakeWordReminderShown = true;  // Mark reminder as shown
+        }
         return;
       }
 
@@ -292,6 +297,7 @@ async function setupSpeechRecognition() {
 
 function startListening() {
   if (!isListening) {
+    wakeWordReminderShown = false;  // Reset reminder when starting
     setupSpeechRecognition().catch(error => {
       console.error('Failed to start listening:', error);
       showSubtitle('语音识别启动失败，请重试');
@@ -315,6 +321,7 @@ function stopListening() {
     }
     recognizer = null;
     isListening = false;
+    wakeWordReminderShown = false;  // Reset reminder when stopping
   }
 }
 
