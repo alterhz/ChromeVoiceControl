@@ -6,9 +6,12 @@
  * @copyright (c) 2025 Ziegler
  */
 
-let recognition = null;
+let recognizer = null;
 let isListening = false;
 let subtitleTimeout = null;
+let audioContext = null;
+let mediaStream = null;
+let recognizerNode = null;
 console.log('Content script loaded');
 
 // 创建字幕元素
@@ -79,340 +82,239 @@ function removeWakeWord(command) {
   return result;
 }
 
-function setupSpeechRecognition() {
+async function setupSpeechRecognition() {
   console.log('Setting up speech recognition');
-  recognition = new webkitSpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = true;
-  recognition.lang = 'zh-CN';
-  recognition.maxAlternatives = 1;
+  
+  try {
+    if (typeof Vosk === 'undefined') {
+      throw new Error('Vosk library not loaded');
+    }
 
-  let lastWakeWordTime = 0;
-  const wakeWordTimeout = 5000; // 唤醒词有效期5秒
+    const modelPath = chrome.runtime.getURL('models/vosk-model-small-cn-0.22.zip');
+    console.log('Loading model from:', modelPath);
+    const model = await Vosk.createModel(modelPath);
+    console.log('Vosk model loaded successfully');
 
-  recognition.onresult = function(event) {
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      const command = result[0].transcript.trim().toLowerCase();
-      console.log('Recognized command:', command, 'isFinal:', result.isFinal);
+    const sampleRate = 16000;
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: false,
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        channelCount: 1,
+        sampleRate
+      },
+    });
+    console.log('Microphone access granted');
+
+    audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    
+    console.log('Creating Vosk recognizer...');
+    recognizer = new model.KaldiRecognizer(sampleRate);
+    
+    let lastWakeWordTime = 0;
+    const wakeWordTimeout = 5000; // 唤醒词有效期5秒
+
+    recognizer.on("result", (message) => {
+      const result = message.result;
+      const command = result.text.trim().toLowerCase();
+      console.log('Recognized command:', command);
       
-      if (result.isFinal) {
-        const currentTime = Date.now();
+      const currentTime = Date.now();
+      
+      // 检查是否包含唤醒词
+      if (containsWakeWord(command)) {
+        lastWakeWordTime = currentTime;
+        showSubtitle(`已唤醒，请说出指令`, true);
+        return;
+      }
+
+      // 检查唤醒状态是否有效
+      if (currentTime - lastWakeWordTime > wakeWordTimeout) {
+        showSubtitle(`请先说"小助手"唤醒`);
+        return;
+      }
+
+      // 处理实际命令
+      const actualCommand = removeWakeWord(command);
+      showSubtitle(actualCommand);
+      
+      const videos = document.getElementsByTagName('video');
+      console.log('Found videos:', videos.length);
+      
+      if (videos.length > 0) {
+        const video = videos[0];
         
-        // 检查是否包含唤醒词
-        if (containsWakeWord(command)) {
-          lastWakeWordTime = currentTime;
-          showSubtitle(`已唤醒，请说出指令`, true);
-          continue;
+        // 中文播放命令
+        const playCommandsChinese = [
+          '播放',
+          '开始播放',
+          '播放视频',
+          '开始',
+          '开启视频',
+          '继续播放',
+          '打开视频',
+          '运行视频',
+          '启动视频',
+          '接着放'
+        ];
+
+        // 英文播放命令
+        const playCommandsEnglish = [
+          'play',
+          'start',
+          'play video',
+          'start video',
+          'resume',
+          'begin',
+          'continue',
+          'go ahead',
+          'run video'
+        ];
+
+        // 中文暂停命令
+        const pauseCommandsChinese = [
+          '暂停',
+          '停止',
+          '暂停视频',
+          '停止播放',
+          '关闭视频',
+          '停下',
+          '别放了',
+          '停一下'
+        ];
+
+        // 英文暂停命令
+        const pauseCommandsEnglish = [
+          'pause',
+          'stop',
+          'pause video',
+          'stop video',
+          'halt',
+          'hold',
+          'stop playing',
+          'freeze'
+        ];
+
+        // 中文静音命令
+        const muteCommandsChinese = [
+          '静音',
+          '关闭声音',
+          '关掉声音',
+          '声音关掉',
+          '不要声音',
+          '闭嘴'
+        ];
+
+        // 英文静音命令
+        const muteCommandsEnglish = [
+          'mute',
+          'silence',
+          'no sound',
+          'turn off sound',
+          'shut up'
+        ];
+
+        // 中文取消静音命令
+        const unmuteCommandsChinese = [
+          '取消静音',
+          '打开声音',
+          '开启声音',
+          '声音打开',
+          '要声音'
+        ];
+
+        // 英文取消静音命令
+        const unmuteCommandsEnglish = [
+          'unmute',
+          'enable sound',
+          'turn on sound',
+          'sound on'
+        ];
+
+        // 检查并执行播放命令
+        if (playCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+            playCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
+          video.play();
         }
-
-        // 检查唤醒状态是否有效
-        if (currentTime - lastWakeWordTime > wakeWordTimeout) {
-          showSubtitle(`请先说"小助手"唤醒`);
-          continue;
+        
+        // 检查并执行暂停命令
+        else if (pauseCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+                pauseCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
+          video.pause();
         }
-
-        // 处理实际命令
-        const actualCommand = removeWakeWord(command);
-        showSubtitle(actualCommand);
         
-        const videos = document.getElementsByTagName('video');
-        console.log('Found videos:', videos.length);
+        // 检查并执行静音命令
+        else if (muteCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+                muteCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
+          video.muted = true;
+        }
         
-        if (videos.length > 0) {
-          const video = videos[0];
-          
-          // 中文播放命令
-          const playCommandsChinese = [
-            '播放',
-            '开始播放',
-            '播放视频',
-            '开始',
-            '开启视频',
-            '继续播放',
-            '打开视频',
-            '运行视频',
-            '启动视频',
-            '接着放'
-          ];
-
-          // 英文播放命令
-          const playCommandsEnglish = [
-            'play',
-            'start',
-            'play video',
-            'start video',
-            'resume',
-            'begin',
-            'continue',
-            'go ahead',
-            'run video'
-          ];
-
-          // 中文暂停命令
-          const pauseCommandsChinese = [
-            '暂停',
-            '停止',
-            '暂停视频',
-            '停止播放',
-            '关闭视频',
-            '停下',
-            '别放了',
-            '停一下'
-          ];
-
-          // 英文暂停命令
-          const pauseCommandsEnglish = [
-            'pause',
-            'stop',
-            'pause video',
-            'stop video',
-            'halt',
-            'hold',
-            'stop playing',
-            'freeze'
-          ];
-
-          // 中文静音命令
-          const muteCommandsChinese = [
-            '静音',
-            '关闭声音',
-            '关掉声音',
-            '声音关掉',
-            '不要声音',
-            '闭嘴'
-          ];
-
-          // 英文静音命令
-          const muteCommandsEnglish = [
-            'mute',
-            'silence',
-            'no sound',
-            'turn off sound',
-            'shut up'
-          ];
-
-          // 中文取消静音命令
-          const unmuteCommandsChinese = [
-            '取消静音',
-            '打开声音',
-            '开启声音',
-            '声音打开',
-            '要声音'
-          ];
-
-          // 英文取消静音命令
-          const unmuteCommandsEnglish = [
-            'unmute',
-            'turn on sound',
-            'enable sound',
-            'sound on'
-          ];
-
-          // 音量调节命令模式
-          const volumePatternChinese = /音量调到(\d+)/;
-          const volumeUpPatternChinese = /增大音量|调高音量|音量增大|音量调高|声音调大|声音增大|声音大点/;
-          const volumeDownPatternChinese = /减小音量|调低音量|音量减小|音量调低|声音调小|声音减小|声音小点/;
-          const volumePatternEnglish = /volume (?:to |set to |change to )?(\d+)/;
-          const volumeUpPatternEnglish = /volume up|increase volume|louder|turn up/;
-          const volumeDownPatternEnglish = /volume down|decrease volume|lower|turn down/;
-
-          // 快进快退命令模式
-          const forwardPatternChinese = /快进(\d+)?(?:秒|分钟)?/;
-          const backwardPatternChinese = /快退(\d+)?(?:秒|分钟)?/;
-          const forwardPatternEnglish = /(?:forward|skip ahead|skip forward|fast forward)(?: (\d+))?(?: seconds?| minutes?)?/;
-          const backwardPatternEnglish = /(?:backward|skip back|rewind|go back)(?: (\d+))?(?: seconds?| minutes?)?/;
-
-          // 中文快进命令
-          const forwardCommandsChinese = [
-            '前进',
-            '向前',
-            '往前',
-            '跳过',
-            '快进'
-          ];
-
-          // 英文快进命令
-          const forwardCommandsEnglish = [
-            'forward',
-            'skip ahead',
-            'skip forward',
-            'fast forward'
-          ];
-
-          // 中文快退命令
-          const backwardCommandsChinese = [
-            '后退',
-            '向后',
-            '往后',
-            '快退',
-            '倒退'
-          ];
-
-          // 英文快退命令
-          const backwardCommandsEnglish = [
-            'backward',
-            'skip back',
-            'rewind',
-            'go back'
-          ];
-
-          // 检查命令类型
-          const isPlayCommand = 
-            playCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
-            playCommandsEnglish.some(cmd => actualCommand.includes(cmd));
-
-          const isPauseCommand =
-            pauseCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
-            pauseCommandsEnglish.some(cmd => actualCommand.includes(cmd));
-
-          const isMuteCommand =
-            muteCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
-            muteCommandsEnglish.some(cmd => actualCommand.includes(cmd));
-
-          const isUnmuteCommand =
-            unmuteCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
-            unmuteCommandsEnglish.some(cmd => actualCommand.includes(cmd));
-
-          // 处理命令
-          if (isPlayCommand) {
-            console.log('Playing video with command:', actualCommand);
-            video.play();
-          } else if (isPauseCommand) {
-            console.log('Pausing video with command:', actualCommand);
-            video.pause();
-          } else if (isMuteCommand) {
-            console.log('Muting video');
-            video.muted = true;
-          } else if (isUnmuteCommand) {
-            console.log('Unmuting video');
-            video.muted = false;
-          } else {
-            // 处理音量调节命令
-            let volumeMatch = actualCommand.match(volumePatternChinese) || actualCommand.match(volumePatternEnglish);
-            if (volumeMatch) {
-              // 将音量值转换为0-1范围
-              const volumeLevel = Math.min(Math.max(parseInt(volumeMatch[1]) / 100, 0), 1);
-              console.log('Setting volume to:', volumeLevel);
-              video.volume = volumeLevel;
-            } else if (volumeUpPatternChinese.test(actualCommand) || volumeUpPatternEnglish.test(actualCommand)) {
-              // 增大音量，每次增加20%
-              video.volume = Math.min(video.volume + 0.2, 1);
-              console.log('Volume increased to:', video.volume);
-            } else if (volumeDownPatternChinese.test(actualCommand) || volumeDownPatternEnglish.test(actualCommand)) {
-              // 减小音量，每次减少20%
-              video.volume = Math.max(video.volume - 0.2, 0);
-              console.log('Volume decreased to:', video.volume);
-            } else {
-              // 处理快进快退命令
-              const DEFAULT_SEEK_TIME = 10; // 默认快进快退10秒
-              let seekTime = DEFAULT_SEEK_TIME;
-              
-              // 检查是否包含时间
-              let forwardMatch = actualCommand.match(forwardPatternChinese) || actualCommand.match(forwardPatternEnglish);
-              let backwardMatch = actualCommand.match(backwardPatternChinese) || actualCommand.match(backwardPatternEnglish);
-              
-              if (forwardMatch || forwardCommandsChinese.some(cmd => actualCommand.includes(cmd)) || 
-                  forwardCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
-                // 如果指定了时间，使用指定的时间
-                if (forwardMatch && forwardMatch[1]) {
-                  seekTime = parseInt(forwardMatch[1]);
-                  // 如果命令中包含"分钟"，将秒数转换为分钟
-                  if (actualCommand.includes('分钟') || actualCommand.includes('minutes')) {
-                    seekTime *= 60;
-                  }
-                }
-                console.log('Seeking forward by', seekTime, 'seconds');
-                video.currentTime = Math.min(video.currentTime + seekTime, video.duration);
-              } else if (backwardMatch || backwardCommandsChinese.some(cmd => actualCommand.includes(cmd)) || 
-                         backwardCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
-                // 如果指定了时间，使用指定的时间
-                if (backwardMatch && backwardMatch[1]) {
-                  seekTime = parseInt(backwardMatch[1]);
-                  // 如果命令中包含"分钟"，将秒数转换为分钟
-                  if (actualCommand.includes('分钟') || actualCommand.includes('minutes')) {
-                    seekTime *= 60;
-                  }
-                }
-                console.log('Seeking backward by', seekTime, 'seconds');
-                video.currentTime = Math.max(video.currentTime - seekTime, 0);
-              }
-            }
-          }
+        // 检查并执行取消静音命令
+        else if (unmuteCommandsChinese.some(cmd => actualCommand.includes(cmd)) ||
+                unmuteCommandsEnglish.some(cmd => actualCommand.includes(cmd))) {
+          video.muted = false;
         }
       }
-    }
-  };
+    });
 
-  recognition.onend = function() {
-    console.log('Speech recognition service disconnected');
-    // 如果仍然处于监听状态，立即重新启动语音识别
-    if (isListening) {
-      console.log('Automatically restarting speech recognition');
-      setTimeout(() => {
-        try {
-          recognition.start();
-          console.log('Speech recognition restarted');
-        } catch (e) {
-          console.error('Error restarting speech recognition:', e);
-        }
-      }, 100);
-    }
-  };
-
-  recognition.onerror = function(event) {
-    console.error('Speech recognition error:', event.error);
-    if (event.error === 'no-speech') {
-      // 无语音输入时自动重新启动
-      console.log('No speech detected, restarting recognition');
-      if (isListening) {
-        setTimeout(() => {
-          try {
-            recognition.start();
-            console.log('Speech recognition restarted after no-speech');
-          } catch (e) {
-            console.error('Error restarting speech recognition:', e);
-          }
-        }, 100);
+    recognizer.on("partialresult", (message) => {
+      const partial = message.result.partial;
+      console.log("Partial result:", partial);
+      if (partial) {
+        showSubtitle(partial);
       }
-      return;
-    }
-    // 其他错误则停止监听
-    stopListening();
-  };
+    });
+
+    recognizerNode = audioContext.createScriptProcessor(4096, 1, 1);
+    recognizerNode.onaudioprocess = (event) => {
+      try {
+        const success = recognizer.acceptWaveform(event.inputBuffer);
+        if (success) {
+          console.log("Waveform accepted");
+        }
+      } catch (error) {
+        console.error('acceptWaveform failed:', error);
+      }
+    };
+    
+    source.connect(recognizerNode);
+    recognizerNode.connect(audioContext.destination);
+    
+    isListening = true;
+    console.log('Voice recognition setup completed');
+  } catch (error) {
+    console.error('Failed to setup speech recognition:', error);
+    throw error;
+  }
 }
 
 function startListening() {
-  console.log('Starting speech recognition');
-  if (!recognition) {
-    setupSpeechRecognition();
-  }
   if (!isListening) {
-    try {
-      recognition.start();
-      isListening = true;
-      console.log('Speech recognition started');
-    } catch (e) {
-      console.error('Error starting speech recognition:', e);
-      // 如果已经在运行，重新启动
-      if (e.name === 'InvalidStateError') {
-        recognition.stop();
-        setTimeout(() => {
-          recognition.start();
-          isListening = true;
-          console.log('Speech recognition restarted');
-        }, 100);
-      }
-    }
+    setupSpeechRecognition().catch(error => {
+      console.error('Failed to start listening:', error);
+      showSubtitle('语音识别启动失败，请重试');
+    });
   }
 }
 
 function stopListening() {
-  console.log('Stopping speech recognition');
-  if (recognition && isListening) {
-    recognition.stop();
+  if (isListening) {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      mediaStream = null;
+    }
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    if (recognizerNode) {
+      recognizerNode.disconnect();
+      recognizerNode = null;
+    }
+    recognizer = null;
     isListening = false;
-    console.log('Speech recognition stopped');
   }
 }
 

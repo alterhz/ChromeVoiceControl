@@ -27,14 +27,14 @@
         "*://*.iqiyi.com/*",
         "*://*.v.qq.com/*"
       ],
-      "js": ["content.js"]
+      "js": ["vosk.js", "content.js"]
     }
   ],
   "icons": {
     "128": "icon_voice_control.png"
   },
   "web_accessible_resources": [{
-    "resources": ["microphone_on.png", "microphone_off.png"],
+    "resources": ["models/*", "microphone_on.png", "microphone_off.png"],
     "matches": ["<all_urls>"]
   }]
 }
