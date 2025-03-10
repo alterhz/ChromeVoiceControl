@@ -129,6 +129,20 @@ async function setupSpeechRecognition() {
         lastWakeWordTime = currentTime;
         showSubtitle(`已唤醒，请说出指令`, true);
         wakeWordReminderShown = false;  // Reset reminder flag when wake word is detected
+        
+        // 当唤醒时暂停视频
+        const videos = document.getElementsByTagName('video');
+        if (videos.length > 0) {
+          console.log('Found videos:', videos.length);
+          const video = videos[0];
+          console.log('Video paused:', !video.paused);
+          if (!video.paused) {
+            console.log('Pausing video');
+            video.pause();
+            // 存储视频状态，用于后续恢复
+            video.dataset.wasPlaying = 'true';
+          }
+        }
         return;
       }
 
@@ -151,6 +165,11 @@ async function setupSpeechRecognition() {
       if (videos.length > 0) {
         const video = videos[0];
         
+        if (video.dataset.wasPlaying === 'true') {
+          video.play();
+          delete video.dataset.wasPlaying;
+        }
+
         // 中文播放命令
         const playCommandsChinese = [
           '播放',
