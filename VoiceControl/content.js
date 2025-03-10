@@ -115,11 +115,15 @@ async function setupSpeechRecognition() {
     recognizer = new model.KaldiRecognizer(sampleRate);
     
     let lastWakeWordTime = 0;
-    const wakeWordTimeout = 5000; // 唤醒词有效期5秒
+    const wakeWordTimeout = 10000; // 唤醒词有效期10秒
 
     recognizer.on("result", (message) => {
       const result = message.result;
       const command = result.text.trim().toLowerCase();
+      if (!command) {
+        return;
+      }
+
       console.log('Recognized command:', command);
       
       const currentTime = Date.now();
@@ -158,6 +162,9 @@ async function setupSpeechRecognition() {
       // 处理实际命令
       const actualCommand = removeWakeWord(command);
       showSubtitle(actualCommand);
+      
+      // 重置唤醒状态时间，延长唤醒状态
+      lastWakeWordTime = currentTime;
       
       const videos = document.getElementsByTagName('video');
       console.log('Found videos:', videos.length);
@@ -285,12 +292,14 @@ async function setupSpeechRecognition() {
 
     recognizer.on("partialresult", (message) => {
       const partial = message.result.partial;
-      console.log("Partial result:", partial);
+      const currentTime = Date.now();
       if (partial) {
-        showSubtitle(partial);
+        console.log("Partial result:", partial);
+        if (currentTime - lastWakeWordTime < wakeWordTimeout) {
+          showSubtitle(partial);
+        }
       }
     });
-
     recognizerNode = audioContext.createScriptProcessor(4096, 1, 1);
     recognizerNode.onaudioprocess = (event) => {
       try {
